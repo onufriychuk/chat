@@ -91,6 +91,11 @@ public class ClientHandler {
                     List<String> userList = server.getUserList();
                     String joinedUsers = String.join(", ", userList);
                     sendMessage("Системное сообщение! Пользователи в чате: " + joinedUsers);
+                } else if (message.startsWith("/w ")) {
+                    String[] args = message.split(" ");
+                    String userTo = args[1];
+                    String msg = message.substring(message.indexOf(userTo) + userTo.length() + 1);
+                    server.privateMessage("Личное сообщение от " + username + ": " + msg, userTo);
                 }
             } else {
                 server.broadcastMessage(username + ": " + message);

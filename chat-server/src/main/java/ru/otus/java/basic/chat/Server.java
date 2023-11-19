@@ -58,5 +58,11 @@ public class Server {
                 .collect(Collectors.toList());
     }
 
-
+    public void privateMessage(String msg, String recipientUsername) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(recipientUsername)) {
+                client.sendMessage(msg);
+            }
+        }
+    }
 }
