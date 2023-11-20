@@ -21,6 +21,7 @@ public class Server {
         this.port = port;
         clients = new ArrayList<>();
         this.authenticationProvider = authenticationProvider;
+        authenticationProvider.register("ovo", "123", "ovo", UserRole.ADMIN);
     }
 
     public void start() {
@@ -64,5 +65,14 @@ public class Server {
                 client.sendMessage(msg);
             }
         }
+    }
+
+    public ClientHandler getClientByUsername(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(username)) {
+                return client;
+            }
+        }
+        return null;
     }
 }
