@@ -63,7 +63,7 @@ public class ClientHandler {
                     String login = args[1];
                     String nickname = args[2];
                     String password = args[3];
-                    Boolean isRegistered = server.getAuthenticationProvider().register(login, password, nickname);
+                    Boolean isRegistered = server.getAuthenticationProvider().register(login, password, nickname, UserRole.USER);
                     if (!isRegistered) {
                         sendMessage("Системное сообщение: Указанный логин/ник уже заняты.");
                     } else {
@@ -91,6 +91,32 @@ public class ClientHandler {
                     List<String> userList = server.getUserList();
                     String joinedUsers = String.join(", ", userList);
                     sendMessage("Системное сообщение! Пользователи в чате: " + joinedUsers);
+                } else if (message.startsWith("/w ")) {
+                    // /w nickname My example message
+                    String[] args = message.split(" ");
+                    String userTo = args[1];
+                    String msg = message.substring(message.indexOf(userTo) + userTo.length() + 1);
+                    server.privateMessage("Личное сообщение от " + username + ": " + msg, userTo);
+                } else if (message.startsWith("/setrole") && server.getAuthenticationProvider().getUserRoleByUsername(username) == UserRole.ADMIN) {
+                    // /setrole User1 ADMIN
+                    String[] args = message.split(" ");
+                    String userTo = args[1];
+                    String newRole = args[2];
+                    boolean isRoleChanged = server.getAuthenticationProvider().setUserRoleByUsername(userTo, UserRole.valueOf(newRole));
+                    if (!isRoleChanged) {
+                        sendMessage("Системное сообщение! Не удалось изменить роль.");
+                    } else {
+                        sendMessage("Системное сообщение! Роль пользователя " + userTo + "успешно изменена на " + newRole);
+                    }
+                } else if (message.startsWith("/kick") && server.getAuthenticationProvider().getUserRoleByUsername(username) == UserRole.ADMIN) {
+                    String[] args = message.split(" ");
+                    String userTo = args[1];
+                    ClientHandler userHandler = server.getClientByUsername(userTo);
+                    if (userHandler != null) {
+                        server.unsubscribe(userHandler);
+                    } else {
+                        sendMessage("Системное сообщение! Не найден пользователь " + userTo);
+                    }
                 }
             } else {
                 server.broadcastMessage(username + ": " + message);

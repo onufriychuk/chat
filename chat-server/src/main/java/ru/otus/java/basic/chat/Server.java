@@ -21,6 +21,7 @@ public class Server {
         this.port = port;
         clients = new ArrayList<>();
         this.authenticationProvider = authenticationProvider;
+        authenticationProvider.register("ovo", "123", "ovo", UserRole.ADMIN);
     }
 
     public void start() {
@@ -58,5 +59,20 @@ public class Server {
                 .collect(Collectors.toList());
     }
 
+    public void privateMessage(String msg, String recipientUsername) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(recipientUsername)) {
+                client.sendMessage(msg);
+            }
+        }
+    }
 
+    public ClientHandler getClientByUsername(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(username)) {
+                return client;
+            }
+        }
+        return null;
+    }
 }
