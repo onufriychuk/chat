@@ -2,6 +2,7 @@ package ru.otus.java.basic.chat;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -20,6 +21,7 @@ public class Main extends JFrame implements Runnable {
         southPanel.add(inTextField = new JTextField());
         inTextField.setEditable(true);
         southPanel.add(inTextSendButton = new JButton("Send message"));
+        inTextSendButton.setMnemonic(KeyEvent.VK_ENTER);
         Container cp = getContentPane();
         cp.setLayout(new BorderLayout());
         cp.add(BorderLayout.CENTER, outTextArea = new JTextArea());
@@ -39,7 +41,7 @@ public class Main extends JFrame implements Runnable {
 
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400, 500);
+        setSize(600, 600);
         setVisible(true);
         inTextField.requestFocus();
         (new Thread(this)).start();
@@ -51,7 +53,7 @@ public class Main extends JFrame implements Runnable {
     public static void main(String[] args) throws Exception {
         try (Network network = new Network()) {
             network.setCallback(args1 -> System.out.println(args1));
-            network.connect(8088);
+            network.connect(8089);
             new Main("Chat", network);
             Scanner scanner = new Scanner(System.in);
             while (true) {
@@ -67,4 +69,5 @@ public class Main extends JFrame implements Runnable {
     public void run() {
 
     }
+
 }
