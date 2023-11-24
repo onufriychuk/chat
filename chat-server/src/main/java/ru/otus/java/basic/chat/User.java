@@ -3,7 +3,7 @@ package ru.otus.java.basic.chat;
 public class User {
     private final String login;
     private final String password;
-    private final String username;
+    private  String username;
     private UserRole userRole;
 
     public UserRole getUserRole() {
@@ -31,5 +31,9 @@ public class User {
 
     public void setUserRole(UserRole userRole) {
         this.userRole = userRole;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

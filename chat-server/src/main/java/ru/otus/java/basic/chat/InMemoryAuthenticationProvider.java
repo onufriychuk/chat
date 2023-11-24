@@ -3,6 +3,7 @@ package ru.otus.java.basic.chat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InMemoryAuthenticationProvider implements AuthenticationProvider {
     private List<User> users;
@@ -11,7 +12,7 @@ public class InMemoryAuthenticationProvider implements AuthenticationProvider {
         this.users = new ArrayList<>();
     }
 
-    public UserRole getUserRoleByUsername(String username) {
+    public UserRole getUserRole(String username) {
         for (User user : users) {
             if (Objects.equals(user.getUsername(), username)) {
                 return user.getUserRole();
@@ -21,10 +22,28 @@ public class InMemoryAuthenticationProvider implements AuthenticationProvider {
     }
 
     @Override
-    public boolean setUserRoleByUsername(String username, UserRole userRole) {
+    public boolean updateUserRole(String username, UserRole userRole) {
         for (User user : users) {
             if (Objects.equals(user.getUsername(), username)) {
                 user.setUserRole(userRole);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public List<String> getUserList() {
+        return users.stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean updateUsername(String username, String newUsername) {
+        for (User user : users) {
+            if (Objects.equals(user.getUsername(), username)) {
+                user.setUsername(newUsername);
                 return true;
             }
         }

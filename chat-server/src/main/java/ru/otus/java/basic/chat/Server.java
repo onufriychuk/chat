@@ -4,15 +4,16 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Server {
-    private int port;
+    private final int port;
     private List<ClientHandler> clients;
     private final AuthenticationProvider authenticationProvider;
-
+    private final Object monitor = new Object();
+    private boolean isShutdowning = false;
     public AuthenticationProvider getAuthenticationProvider() {
         return authenticationProvider;
     }
@@ -21,25 +22,33 @@ public class Server {
         this.port = port;
         clients = new ArrayList<>();
         this.authenticationProvider = authenticationProvider;
-        authenticationProvider.register("ovo", "123", "ovo", UserRole.ADMIN);
     }
 
     public void start() {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            while (true) {
-                System.out.println("Системное сообщение: сервер запущен на порту " + port); // переделать на логирование
+        ServerSocket serverSocket = null;
+        try {
+            serverSocket = new ServerSocket(port);
+            while (!isShutdowning) {
+                System.out.println("System > Сервер запущен. Порт " + port); // переделать на логирование
                 Socket socket = serverSocket.accept();
                 new ClientHandler(socket, this);
             }
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
+        } finally {
+            try {
+
+                serverSocket.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
     public synchronized void subscribe(ClientHandler clientHandler) {
         clients.add(clientHandler);
-        broadcastMessage("Системное сообщение: пользователь " + clientHandler.getUsername() + " вошёл в чат.");
+        broadcastMessage("System > пользователь " + clientHandler.getUsername() + " вошёл в чат.");
     }
 
     public synchronized void broadcastMessage(String message) {
@@ -49,8 +58,9 @@ public class Server {
     }
 
     public synchronized void unsubscribe(ClientHandler clientHandler) {
+        broadcastMessage("System > пользователь " + clientHandler.getUsername() + " вышел из чата.");
         clients.remove(clientHandler);
-        broadcastMessage("Системное сообщение: пользователь " + clientHandler.getUsername() + " вышел из чата.");
+        clientHandler.disconnect();
     }
 
     public synchronized List<String> getUserList() {
@@ -74,5 +84,23 @@ public class Server {
             }
         }
         return null;
+    }
+
+    public void shutdown() {
+        isShutdowning = true;
+        new Thread(() -> {
+            try {
+                synchronized (monitor) {
+                    Iterator<ClientHandler> iterator = clients.iterator();
+                    while (iterator.hasNext()) {
+                        ClientHandler clientHandler = iterator.next();
+                        clientHandler.disconnect();
+                        iterator.remove();
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 }
