@@ -1,17 +1,23 @@
 package ru.otus.java.basic.chat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.chrono.ChronoLocalDate;
+import java.time.chrono.ChronoLocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 
 public class ClientHandler {
+    private static final Logger logger = LogManager.getLogger(ClientHandler.class.getName());
     private final Socket socket;
-
-    private final Server server;
     private final DataInputStream in;
     private final DataOutputStream out;
     private String username;
@@ -22,7 +28,6 @@ public class ClientHandler {
 
     public ClientHandler(Socket socket, Server server) throws IOException {
         this.socket = socket;
-        this.server = server;
         in = new DataInputStream(socket.getInputStream());
         out = new DataOutputStream(socket.getOutputStream());
         new Thread(() -> {
@@ -30,6 +35,7 @@ public class ClientHandler {
                 authenticateUser(server);
                 communicateWithServer(server);
             } catch (IOException e) {
+                logger.error(e);
                 throw new RuntimeException(e);
             } finally {
                 disconnect();
@@ -40,6 +46,7 @@ public class ClientHandler {
     private void authenticateUser(Server server) throws IOException {
         boolean isAuthenticate = false;
         while (!isAuthenticate) {
+            sendMessage("Залогиниться - /auth login password \nЗарегистрироваться - /register login nick password");
             String message = in.readUTF();
             String[] args = message.split(" ");
             String command = args[0];
@@ -52,14 +59,19 @@ public class ClientHandler {
                     String login = args[1];
                     String password = args[2];
                     String username = server.getAuthenticationProvider().getUsernameByLoginAndPassword(login, password);
+                    if (server.getAuthenticationProvider().isUsernameBanned(username)) {
+                        sendMessage("Вы забанены");
+                        continue;
+                    }
                     if (username == null || username.isBlank()) {
                         sendMessage("System > Указан неверный логин/пароль.");
-                    } else {
-                        this.username = username;
-                        sendMessage("System > " + username + " , добро пожаловать!");
-                        server.subscribe(this);
-                        isAuthenticate = true;
+                        continue;
                     }
+                    this.username = username;
+                    sendMessage("System > " + username + " , добро пожаловать!");
+                    server.subscribe(this);
+                    isAuthenticate = true;
+
                     break;
                 }
                 case "/register": {
@@ -95,8 +107,25 @@ public class ClientHandler {
                 String[] args = message.split(" ");
                 String command = args[0];
                 switch (command) {
+                    case "/ban": {
+                        if (server.getAuthenticationProvider().getUserRole(username) == UserRole.ADMIN) {
+                            if (args.length < 3) {
+                                sendMessage("System > Неверный формат. Должно быть: \"/ban User1 HOURS\"");
+                                continue;
+                            }
+                            String userTo = args[1];
+                            long banHrs = Long.parseLong(args[2]);
+                            boolean isBanChanged = server.getAuthenticationProvider().updateBannedTime(userTo, System.currentTimeMillis() + banHrs * 3600000);
+                            if (!isBanChanged) {
+                                sendMessage("System > Не удалось забанить пользователя.");
+                            } else {
+                                sendMessage("System > Админ " + userTo + " забанил участника " + userTo);
+                                server.privateMessage("System > Администратор " + username + " забанил вас на " + banHrs + " часов.", userTo);
+                            }
+                        }
+                        continue;
+                    }
                     case "/list": {
-                        System.out.println(server.getAuthenticationProvider().getUserRole(username).toString());
                         if (server.getAuthenticationProvider().getUserRole(username) == UserRole.ADMIN) {
                             String allUsers = String.join(", ", server.getAuthenticationProvider().getUserList());
                             sendMessage("System > Зарегистированные пользователи: " + allUsers);
@@ -174,12 +203,18 @@ public class ClientHandler {
                             continue;
                         }
                         String newUsername = args[1];
+                        if (server.getAuthenticationProvider().isUsernameExist(newUsername)) {
+                            sendMessage("Это имя занято.");
+                            continue;
+                        }
                         boolean isUsernameChanged = server.getAuthenticationProvider().updateUsername(username, newUsername);
                         if (!isUsernameChanged) {
                             sendMessage("System > Не удалось изменить ник.");
                         } else {
                             server.broadcastMessage("System > Пользователь " + username + " изменил свой ник на " + newUsername);
                             this.username = newUsername;
+                            server.unsubscribe(this);
+                            server.subscribe(this);
                         }
                         continue;
                     }
@@ -198,6 +233,7 @@ public class ClientHandler {
             try {
                 in.close();
             } catch (IOException e) {
+                logger.error(e);
                 throw new RuntimeException(e);
             }
         }
@@ -205,6 +241,7 @@ public class ClientHandler {
             try {
                 out.close();
             } catch (IOException e) {
+                logger.error(e);
                 throw new RuntimeException(e);
             }
         }
@@ -212,6 +249,7 @@ public class ClientHandler {
             try {
                 socket.close();
             } catch (IOException e) {
+                logger.error(e);
                 throw new RuntimeException(e);
             }
         }
@@ -219,11 +257,10 @@ public class ClientHandler {
 
     public void sendMessage(String message) {
         try {
-            Date date = new Date();
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
-            out.writeUTF("[" + simpleDateFormat.format(date) + "] " + message);
+            String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+            out.writeUTF("[" + date + "] " + message);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e);
             disconnect();
         }
     }

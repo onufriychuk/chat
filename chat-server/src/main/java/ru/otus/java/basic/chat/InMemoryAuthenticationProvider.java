@@ -51,6 +51,21 @@ public class InMemoryAuthenticationProvider implements AuthenticationProvider {
     }
 
     @Override
+    public boolean updateBannedTime(String username, long bannedTo) {
+        return false;
+    }
+
+    @Override
+    public boolean isUsernameExist(String username) {
+        return false;
+    }
+
+    @Override
+    public boolean isUsernameBanned(String username) {
+        return false;
+    }
+
+    @Override
     public String getUsernameByLoginAndPassword(String login, String password) {
         for (User user : users) {
             if (Objects.equals(user.getPassword(), password) && Objects.equals(user.getLogin(), login)) {

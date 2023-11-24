@@ -53,7 +53,7 @@ public class Main extends JFrame implements Runnable {
     public static void main(String[] args) throws Exception {
         try (Network network = new Network()) {
             network.setCallback(args1 -> System.out.println(args1));
-            network.connect(8088);
+            network.connect(8089);
             new Main("Chat", network);
             Scanner scanner = new Scanner(System.in);
             while (true) {

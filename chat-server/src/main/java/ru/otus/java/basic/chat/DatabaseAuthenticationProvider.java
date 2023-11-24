@@ -1,10 +1,16 @@
 package ru.otus.java.basic.chat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 public class DatabaseAuthenticationProvider implements AuthenticationProvider {
+    private static final Logger logger = LogManager.getLogger(Server.class.getName());
     private static final String dbName = "jdbc:postgresql://localhost:5432/postgres";
     private static final String dbUser = "postgres";
     private static final String dbPassword = "MJxaN9bz";
@@ -15,7 +21,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
             Connection connection = DriverManager.getConnection(dbName, dbUser, dbPassword);
             this.connection = connection;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
     }
 
@@ -30,7 +36,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
                 username = resultSet.getString("username");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
         return username;
     }
@@ -53,7 +59,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
             }
             connection.commit();
         } catch (SQLException e) {
-            System.out.println("Не удалось соедениться с БД");
+            logger.error("Не удалось соедениться с БД");
         }
         return true;
     }
@@ -68,7 +74,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
                 role = resultSet.getString("role");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
         return UserRole.valueOf(role);
     }
@@ -84,7 +90,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
             preparedStatement.setString(2, username);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
             return false;
         }
         return true;
@@ -99,14 +105,14 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
                 users.add(resultSet.getString("username"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
         return users;
     }
 
     @Override
     public boolean updateUsername(String username, String newUsername) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("" +
+        try (PreparedStatement preparedStatement = connection.prepareStatement(
                 "UPDATE public.users " +
                 "SET username = ? " +
                 "WHERE username = ?;"
@@ -115,9 +121,55 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
             preparedStatement.setString(2, username);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Не удалось соедениться с БД");
             return false;
         }
         return true;
     }
+    public boolean updateBannedTime(String username, long bannedTo) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(
+                "UPDATE public.users " +
+                        "SET banned_to = ? " +
+                        "WHERE username = ?;"
+        )) {
+            preparedStatement.setLong(1, bannedTo);
+            preparedStatement.setString(2, username);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Не удалось соедениться с БД");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isUsernameExist(String username) {
+        List<String> users = new ArrayList<>();
+        try (PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT username FROM public.users WHERE username = ?")) {
+            preparedStatement.setString(1, username);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if(resultSet.next()) {
+                return true;
+            }
+        } catch (SQLException e) {
+            logger.error(e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isUsernameBanned(String username) {
+        try (PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT banned_to FROM public.users WHERE username = ?")) {
+            preparedStatement.setString(1, username);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                if (resultSet.getLong("banned_to") < System.currentTimeMillis()) {
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            logger.error(e);
+        }
+        return true;
+    }
+
 }

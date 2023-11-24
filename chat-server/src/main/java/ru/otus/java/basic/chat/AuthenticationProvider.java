@@ -1,5 +1,6 @@
 package ru.otus.java.basic.chat;
 
+import java.time.chrono.ChronoLocalDateTime;
 import java.util.List;
 
 public interface AuthenticationProvider {
@@ -10,4 +11,7 @@ public interface AuthenticationProvider {
     public List<String> getUserList();
 
     boolean updateUsername(String username, String newUsername);
+    public boolean updateBannedTime(String username, long bannedTo);
+    public boolean isUsernameExist(String username);
+    public boolean isUsernameBanned(String username);
 }
